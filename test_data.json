@@ -1,0 +1,425 @@
+{
+  "__METEDATA__": {
+    "schemaVersion": 2,
+    "exportedAt": "2026-06-01T02:11:54.309Z",
+    "appName": "Tree View Data Exchange UI",
+    "appDataKeys": [
+      "tree",
+      "exchangeRows"
+    ],
+    "note": "This section is reserved for application metadata. User-edited data is stored outside this object."
+  },
+  "tree": [
+    {
+      "id": "node_mptmo4hm_zn6h43u",
+      "name": "TWIN",
+      "checked": false,
+      "expanded": true,
+      "children": [
+        {
+          "id": "node_mptmo4hm_2twqp8e",
+          "name": "Comp1",
+          "checked": false,
+          "expanded": true,
+          "children": [
+            {
+              "id": "node_mptmo4hm_voo05l8",
+              "name": "MOTOR",
+              "checked": false,
+              "expanded": true,
+              "children": [
+                {
+                  "id": "node_mptmo4hm_4qo7iey",
+                  "name": "motorX",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukg8ru_ztkkutk",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgcgv_s67aigt",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgi2t_4zmb6nl",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmp3pn_6nj0o5v",
+                  "name": "motorY",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukgmy8_yi1s8gm",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgmy8_ciuqqgw",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgmy8_r91y9et",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmp3pn_r7hjv1j",
+                  "name": "motorZ",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukgqcx_gi4unap",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgqcx_nrt1ysj",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukgqcx_d07y9tm",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "node_mptmo4hm_34s3afv",
+              "name": "DISTANCE_SENSOR",
+              "checked": false,
+              "expanded": false,
+              "children": [
+                {
+                  "id": "node_mptmpn5d_og9rzn7",
+                  "name": "limitX+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukjf55_ymzhw5p",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmpn5d_an9myix",
+                  "name": "limitX-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukk7tf_kuhreue",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmpn5d_lozbkuc",
+                  "name": "limitY+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkacn_4074h95",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmpn5d_ckutkvv",
+                  "name": "limitY-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkcp3_kpeq7y7",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmpn5d_372qvmr",
+                  "name": "limitZ+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkgic_i5haf2h",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mptmpn5d_2bt0kmf",
+                  "name": "limitZ-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkj0c_zpwj11l",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "node_mpukkq7q_a7kkg5z",
+          "name": "Comp2",
+          "checked": false,
+          "expanded": false,
+          "children": [
+            {
+              "id": "node_mpukkq7q_iubpwd8",
+              "name": "MOTOR",
+              "checked": false,
+              "expanded": false,
+              "children": [
+                {
+                  "id": "node_mpukkq7q_1g9s9ok",
+                  "name": "motorX",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_qdnzq1i",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_hxfmen6",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_1si7tz3",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_rxpxmeb",
+                  "name": "motorY",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_boxbn84",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_5j1gnxi",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_ly55j3x",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_g6h78cn",
+                  "name": "motorZ",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_01ti3iq",
+                      "name": "position",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_27kmt8o",
+                      "name": "velocity",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    },
+                    {
+                      "id": "node_mpukkq7q_ds6wk42",
+                      "name": "accleration",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "node_mpukkq7q_7029mfe",
+              "name": "DISTANCE_SENSOR",
+              "checked": false,
+              "expanded": false,
+              "children": [
+                {
+                  "id": "node_mpukkq7q_ojx5mmh",
+                  "name": "limitX+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_8wvtsmj",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_15zyhxt",
+                  "name": "limitX-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_vfzyhsi",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_epuo8h1",
+                  "name": "limitY+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_2fp3bjj",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_0z1xe6n",
+                  "name": "limitY-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_20rmjqq",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_rmpe8h4",
+                  "name": "limitZ+",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_vz8fv3g",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "node_mpukkq7q_bfweumy",
+                  "name": "limitZ-",
+                  "checked": false,
+                  "expanded": false,
+                  "children": [
+                    {
+                      "id": "node_mpukkq7q_8mx9cni",
+                      "name": "value",
+                      "checked": false,
+                      "expanded": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "exchangeRows": []
+}
