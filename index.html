@@ -525,6 +525,13 @@
       background: var(--hover);
     }
 
+    .search-item.selected,
+    .exchange-selected-row {
+      background: var(--selected) !important;
+      outline: 1px solid #bfdbfe;
+      outline-offset: -1px;
+    }
+
     .path-text {
       font-family: Consolas, "Courier New", monospace;
       font-size: 13px;
@@ -657,6 +664,56 @@
       padding: 12px 16px 16px;
     }
 
+    .data-size-select {
+      height: 30px;
+      min-width: 86px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 8px;
+      background: #fff;
+    }
+
+    .exchange-group-row {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+
+    .exchange-bit-row td.path-cell {
+      padding-left: 28px;
+    }
+
+    .exchange-overflow-row {
+      background: #fee2e2;
+    }
+
+    .exchange-overflow-row td {
+      border-bottom-color: #fecaca;
+    }
+
+    .exchange-selected-row td {
+      border-bottom-color: #bfdbfe;
+    }
+
+    .bit-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      height: 22px;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .path-editable {
+      cursor: pointer;
+      text-decoration: underline dotted #94a3b8;
+      text-underline-offset: 3px;
+    }
+
     @media (max-width: 960px) {
       body {
         overflow: auto;
@@ -786,6 +843,7 @@
           </div>
           <div class="panel-actions">
             <button class="collapse-btn" data-toggle-panel="exchange" title="收折資料交換表">▶</button>
+            <button id="addGroupBtn" class="ghost">Add Group</button>
             <button id="clearAllBtn" class="danger">Clear All</button>
           </div>
         </div>
@@ -796,6 +854,7 @@
                 <th class="center">Enable</th>
                 <th class="center">Lock</th>
                 <th>變數名稱</th>
+                <th>資料大小</th>
                 <th>PLC address</th>
                 <th class="center">刪除列</th>
               </tr>
@@ -825,6 +884,23 @@
       <div class="modal-footer">
         <button id="cancelChildModalBtn" class="ghost">取消</button>
         <button id="confirmChildModalBtn">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bindBitModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">設定 BIT 子節點變數名稱</div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="bindBitSelect">變數名稱</label>
+          <select id="bindBitSelect" style="height:34px;border:1px solid var(--line);border-radius:8px;padding:0 10px;"></select>
+        </div>
+        <div class="hint-text">可選擇 &lt;NONE&gt;，或選擇目前 Search Result 中尚未勾選的項目。選擇後，對應 Search Result 項目會自動勾選。</div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelBindBitBtn" class="ghost">取消</button>
+        <button id="confirmBindBitBtn">套用</button>
       </div>
     </div>
   </div>
@@ -862,8 +938,10 @@
       selectedIds: new Set(),
       copiedNode: null,
       searchCheckedIds: new Set(),
+      selectedSearchResultId: null,
       searchKeywords: [],
       exchangeRows: [],
+      selectedExchangeRowId: null,
       collapsedPanels: {
         tree: false,
         search: false,
@@ -895,6 +973,7 @@
       searchCount: document.getElementById("searchCount"),
       searchResultContainer: document.getElementById("searchResultContainer"),
       addSelectedBtn: document.getElementById("addSelectedBtn"),
+      addGroupBtn: document.getElementById("addGroupBtn"),
       clearAllBtn: document.getElementById("clearAllBtn"),
       exchangeBody: document.getElementById("exchangeBody"),
       statusBar: document.getElementById("statusBar"),
@@ -902,7 +981,11 @@
       childNameInput: document.getElementById("childNameInput"),
       childModalCountInput: document.getElementById("childModalCountInput"),
       cancelChildModalBtn: document.getElementById("cancelChildModalBtn"),
-      confirmChildModalBtn: document.getElementById("confirmChildModalBtn")
+      confirmChildModalBtn: document.getElementById("confirmChildModalBtn"),
+      bindBitModal: document.getElementById("bindBitModal"),
+      bindBitSelect: document.getElementById("bindBitSelect"),
+      cancelBindBitBtn: document.getElementById("cancelBindBitBtn"),
+      confirmBindBitBtn: document.getElementById("confirmBindBitBtn")
     };
 
     const panelMap = {
@@ -913,8 +996,17 @@
 
     const METADATA_KEY = "__METEDATA__";
     const METADATA_COMPAT_KEYS = ["__METEDATA__", "__METADATA__"];
+    const DATA_SIZE_OPTIONS = ["WORD", "DWORD", "BYTE", "REAL"];
+    const DATA_SIZE_BIT_COUNT = {
+      BYTE: 4,
+      WORD: 8,
+      DWORD: 16,
+      REAL: 16,
+      BIT: 1
+    };
 
     let pendingChildParentId = null;
+    let pendingBitRowId = null;
 
     function makeId() {
       return "node_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
@@ -1544,12 +1636,18 @@
       list.className = "search-list";
       for (const item of matches) {
         const li = document.createElement("li");
-        li.className = "search-item";
+        li.className = "search-item" + (state.selectedSearchResultId === item.node.id ? " selected" : "");
+        li.addEventListener("click", () => {
+          state.selectedSearchResultId = item.node.id;
+          renderSearchResults();
+        });
 
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = state.searchCheckedIds.has(item.node.id);
+        checkbox.addEventListener("click", event => event.stopPropagation());
         checkbox.addEventListener("change", event => {
+          state.selectedSearchResultId = item.node.id;
           if (event.target.checked) {
             state.searchCheckedIds.add(item.node.id);
           } else {
@@ -1563,6 +1661,7 @@
         path.textContent = item.path;
         path.title = "點選可定位 Tree View 節點";
         path.addEventListener("click", () => {
+          state.selectedSearchResultId = item.node.id;
           state.selectedId = item.node.id;
           state.selectedIds = new Set([item.node.id]);
           expandAncestors(item.node.id);
@@ -1626,6 +1725,7 @@
     function updateSearchResults(clearChecked = false) {
       if (clearChecked) {
         state.searchCheckedIds.clear();
+        state.selectedSearchResultId = null;
       }
       renderSearchResults();
     }
@@ -1703,31 +1803,31 @@
     }
 
     function addSelectedToExchange() {
-      const leafOnly = true;
-      const selectedFromTree = getAllNodes().filter(item => item.node.checked && isLeafNode(item.node));
       const selectedFromSearch = getAllNodes().filter(item => state.searchCheckedIds.has(item.node.id) && isLeafNode(item.node));
       const merged = new Map();
 
-      for (const item of [...selectedFromTree, ...selectedFromSearch]) {
+      for (const item of selectedFromSearch) {
         merged.set(item.node.id, item);
       }
 
       if (merged.size === 0) {
-        setStatus("沒有任何已勾選的葉節點可加入資料交換表。");
+        setStatus("Search Result 中沒有任何已勾選的葉節點可加入資料交換表。");
         return;
       }
 
-      const existingPaths = new Set(state.exchangeRows.map(row => row.path));
+      const existingPaths = getAllExchangePaths();
       let added = 0;
 
       for (const item of merged.values()) {
         if (existingPaths.has(item.path)) continue;
         state.exchangeRows.push({
+          type: "row",
           id: makeId(),
           nodeId: item.node.id,
           enabled: true,
           locked: false,
           path: item.path,
+          dataSize: "WORD",
           plcAddress: ""
         });
         existingPaths.add(item.path);
@@ -1738,80 +1838,308 @@
       renderExchangeTable();
     }
 
+    function getAllExchangePaths() {
+      const paths = new Set();
+      function collect(rows) {
+        for (const row of rows) {
+          if (row.path && row.path !== "<NONE>") paths.add(row.path);
+          if (row.type === "group" && Array.isArray(row.children)) {
+            collect(row.children);
+          }
+        }
+      }
+      collect(state.exchangeRows);
+      return paths;
+    }
+
+    function addExchangeGroup() {
+      const groupName = createUniqueExchangeGroupName();
+      const group = {
+        type: "group",
+        id: makeId(),
+        enabled: true,
+        locked: false,
+        path: groupName,
+        dataSize: "WORD",
+        plcAddress: "",
+        children: []
+      };
+      ensureGroupBitChildren(group);
+      state.exchangeRows.push(group);
+      setStatus(`已新增 group：${groupName}`);
+      renderExchangeTable();
+    }
+
+    function createUniqueExchangeGroupName() {
+      const names = new Set(state.exchangeRows.map(row => row.path));
+      let index = 1;
+      let name = `group_${index}`;
+      while (names.has(name)) {
+        index++;
+        name = `group_${index}`;
+      }
+      return name;
+    }
+
+    function getBitCountByDataSize(dataSize) {
+      return DATA_SIZE_BIT_COUNT[dataSize] || DATA_SIZE_BIT_COUNT.WORD;
+    }
+
+    function ensureGroupBitChildren(group) {
+      if (!Array.isArray(group.children)) group.children = [];
+      const bitCount = getBitCountByDataSize(group.dataSize);
+      while (group.children.length < bitCount) {
+        group.children.push({
+          type: "bit",
+          id: makeId(),
+          nodeId: "",
+          enabled: true,
+          locked: false,
+          path: "<NONE>",
+          dataSize: "BIT",
+          plcAddress: ""
+        });
+      }
+    }
+
+    function reconcileGroupBitChildrenAfterSizeChange(group) {
+      if (!Array.isArray(group.children)) group.children = [];
+      const bitCount = getBitCountByDataSize(group.dataSize);
+
+      if (group.children.length > bitCount) {
+        group.children = group.children.filter((child, index) => {
+          if (index < bitCount) return true;
+          return child.path && child.path !== "<NONE>";
+        });
+      }
+
+      ensureGroupBitChildren(group);
+    }
+
     function renderExchangeTable() {
       dom.exchangeBody.innerHTML = "";
       if (state.exchangeRows.length === 0) {
         const tr = document.createElement("tr");
-        tr.innerHTML = '<td colspan="5" class="empty-state">尚未加入任何資料交換項目。</td>';
+        tr.innerHTML = '<td colspan="6" class="empty-state">尚未加入任何資料交換項目。</td>';
         dom.exchangeBody.appendChild(tr);
         return;
       }
 
       for (const row of state.exchangeRows) {
-        const tr = document.createElement("tr");
-        if (row.locked) tr.className = "locked-row";
-
-        const enableTd = document.createElement("td");
-        enableTd.className = "center";
-        const enableCheckbox = document.createElement("input");
-        enableCheckbox.type = "checkbox";
-        enableCheckbox.checked = row.enabled;
-        enableCheckbox.disabled = row.locked;
-        enableCheckbox.addEventListener("change", event => {
-          row.enabled = event.target.checked;
-        });
-        enableTd.appendChild(enableCheckbox);
-
-        const lockTd = document.createElement("td");
-        lockTd.className = "center";
-        const lockCheckbox = document.createElement("input");
-        lockCheckbox.type = "checkbox";
-        lockCheckbox.checked = row.locked;
-        lockCheckbox.addEventListener("change", event => {
-          row.locked = event.target.checked;
-          renderExchangeTable();
-        });
-        lockTd.appendChild(lockCheckbox);
-
-        const pathTd = document.createElement("td");
-        pathTd.className = "path-cell";
-        pathTd.textContent = row.path;
-
-        const plcTd = document.createElement("td");
-        const plcInput = document.createElement("input");
-        plcInput.type = "text";
-        plcInput.className = "plc-input";
-        plcInput.placeholder = "例如：D100 / MW10 / DB1.DBW0";
-        plcInput.value = row.plcAddress;
-        plcInput.disabled = row.locked;
-        plcInput.addEventListener("input", event => {
-          row.plcAddress = event.target.value;
-        });
-        plcTd.appendChild(plcInput);
-
-        const deleteTd = document.createElement("td");
-        deleteTd.className = "center";
-        const deleteBtn = document.createElement("button");
-        deleteBtn.className = "icon-button danger";
-        deleteBtn.textContent = "×";
-        deleteBtn.title = "刪除列";
-        deleteBtn.disabled = row.locked;
-        deleteBtn.addEventListener("click", () => {
-          state.exchangeRows = state.exchangeRows.filter(item => item.id !== row.id);
-          renderExchangeTable();
-          setStatus("資料交換列已刪除。");
-        });
-        deleteTd.appendChild(deleteBtn);
-
-        tr.append(enableTd, lockTd, pathTd, plcTd, deleteTd);
-        dom.exchangeBody.appendChild(tr);
+        if (row.type === "group") {
+          ensureGroupBitChildren(row);
+          dom.exchangeBody.appendChild(createExchangeRowElement(row, { isGroup: true }));
+          const validBitCount = getBitCountByDataSize(row.dataSize);
+          row.children.forEach((child, index) => {
+            dom.exchangeBody.appendChild(createExchangeRowElement(child, {
+              isBit: true,
+              parent: row,
+              bitIndex: index,
+              overflow: index >= validBitCount
+            }));
+          });
+        } else {
+          dom.exchangeBody.appendChild(createExchangeRowElement(row));
+        }
       }
+    }
+
+    function createExchangeRowElement(row, options = {}) {
+      const tr = document.createElement("tr");
+      if (row.locked) tr.classList.add("locked-row");
+      if (options.isGroup) tr.classList.add("exchange-group-row");
+      if (options.isBit) tr.classList.add("exchange-bit-row");
+      if (options.overflow) tr.classList.add("exchange-overflow-row");
+      if (state.selectedExchangeRowId === row.id) tr.classList.add("exchange-selected-row");
+      tr.addEventListener("click", () => {
+        state.selectedExchangeRowId = row.id;
+        renderExchangeTable();
+      });
+
+      const enableTd = document.createElement("td");
+      enableTd.className = "center";
+      const enableCheckbox = document.createElement("input");
+      enableCheckbox.type = "checkbox";
+      enableCheckbox.checked = row.enabled !== false;
+      enableCheckbox.disabled = row.locked;
+      enableCheckbox.addEventListener("click", event => event.stopPropagation());
+      enableCheckbox.addEventListener("mousedown", event => event.stopPropagation());
+      enableCheckbox.addEventListener("change", event => {
+        row.enabled = event.target.checked;
+      });
+      enableTd.appendChild(enableCheckbox);
+
+      const lockTd = document.createElement("td");
+      lockTd.className = "center";
+      const lockCheckbox = document.createElement("input");
+      lockCheckbox.type = "checkbox";
+      lockCheckbox.checked = Boolean(row.locked);
+      lockCheckbox.addEventListener("click", event => event.stopPropagation());
+      lockCheckbox.addEventListener("mousedown", event => event.stopPropagation());
+      lockCheckbox.addEventListener("change", event => {
+        row.locked = event.target.checked;
+        renderExchangeTable();
+      });
+      lockTd.appendChild(lockCheckbox);
+
+      const pathTd = document.createElement("td");
+      pathTd.className = "path-cell";
+      if (options.isBit) {
+        const bitIndex = document.createElement("span");
+        bitIndex.className = "bit-index";
+        bitIndex.textContent = `BIT ${options.bitIndex}`;
+        const pathSpan = document.createElement("span");
+        pathSpan.className = "path-editable";
+        pathSpan.textContent = row.path || "<NONE>";
+        pathSpan.title = "Double click 修改 BIT 子節點變數名稱";
+        pathSpan.addEventListener("dblclick", () => openBindBitModal(row.id));
+        pathTd.append(bitIndex, pathSpan);
+      } else {
+        pathTd.textContent = row.path;
+      }
+
+      const dataSizeTd = document.createElement("td");
+      if (options.isBit) {
+        dataSizeTd.textContent = "BIT";
+      } else {
+        const select = document.createElement("select");
+        select.className = "data-size-select";
+        DATA_SIZE_OPTIONS.forEach(option => {
+          const opt = document.createElement("option");
+          opt.value = option;
+          opt.textContent = option;
+          opt.selected = (row.dataSize || "WORD") === option;
+          select.appendChild(opt);
+        });
+        select.disabled = row.locked;
+        select.addEventListener("click", event => event.stopPropagation());
+        select.addEventListener("mousedown", event => event.stopPropagation());
+        select.addEventListener("change", event => {
+          row.dataSize = event.target.value;
+          if (row.type === "group") {
+            reconcileGroupBitChildrenAfterSizeChange(row);
+          }
+          renderExchangeTable();
+        });
+        dataSizeTd.appendChild(select);
+      }
+
+      const plcTd = document.createElement("td");
+      const plcInput = document.createElement("input");
+      plcInput.type = "text";
+      plcInput.className = "plc-input";
+      plcInput.placeholder = options.isBit ? "" : "例如：D100 / MW10 / DB1.DBW0";
+      plcInput.value = row.plcAddress || "";
+      plcInput.disabled = row.locked || options.isBit;
+      plcInput.addEventListener("click", event => event.stopPropagation());
+      plcInput.addEventListener("mousedown", event => event.stopPropagation());
+      plcInput.addEventListener("input", event => {
+        row.plcAddress = event.target.value;
+      });
+      plcTd.appendChild(plcInput);
+
+      const deleteTd = document.createElement("td");
+      deleteTd.className = "center";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "icon-button danger";
+      deleteBtn.textContent = "×";
+      deleteBtn.title = "刪除列";
+      deleteBtn.disabled = row.locked || options.isBit;
+      deleteBtn.addEventListener("click", event => {
+        event.stopPropagation();
+        state.exchangeRows = state.exchangeRows.filter(item => item.id !== row.id);
+        if (state.selectedExchangeRowId === row.id) state.selectedExchangeRowId = null;
+        renderExchangeTable();
+        setStatus("資料交換列已刪除。");
+      });
+      deleteTd.appendChild(deleteBtn);
+
+      tr.append(enableTd, lockTd, pathTd, dataSizeTd, plcTd, deleteTd);
+      return tr;
+    }
+
+    function openBindBitModal(bitRowId) {
+      const bitRow = findExchangeRowById(bitRowId);
+      if (!bitRow) return;
+      pendingBitRowId = bitRowId;
+      populateBindBitOptions(bitRow);
+      dom.bindBitModal.classList.remove("hidden");
+      setTimeout(() => dom.bindBitSelect.focus(), 0);
+    }
+
+    function populateBindBitOptions(bitRow) {
+      dom.bindBitSelect.innerHTML = "";
+      const noneOption = document.createElement("option");
+      noneOption.value = "";
+      noneOption.textContent = "<NONE>";
+      noneOption.selected = !bitRow.nodeId;
+      dom.bindBitSelect.appendChild(noneOption);
+
+      const currentMatches = getCurrentSearchMatches();
+      for (const item of currentMatches) {
+        const alreadyChecked = state.searchCheckedIds.has(item.node.id);
+        const isCurrent = bitRow.nodeId === item.node.id;
+        if (alreadyChecked && !isCurrent) continue;
+        const option = document.createElement("option");
+        option.value = item.node.id;
+        option.textContent = item.path;
+        option.selected = isCurrent;
+        dom.bindBitSelect.appendChild(option);
+      }
+    }
+
+    function confirmBindBitRow() {
+      if (!pendingBitRowId) return;
+      const bitRow = findExchangeRowById(pendingBitRowId);
+      if (!bitRow) return;
+      const selectedNodeId = dom.bindBitSelect.value;
+
+      if (!selectedNodeId) {
+        if (bitRow.nodeId) state.searchCheckedIds.delete(bitRow.nodeId);
+        bitRow.nodeId = "";
+        bitRow.path = "<NONE>";
+        closeBindBitModal();
+        renderSearchResults();
+        renderExchangeTable();
+        setStatus("BIT 子節點已設定為 <NONE>。");
+        return;
+      }
+
+      const item = getAllNodes().find(nodeItem => nodeItem.node.id === selectedNodeId);
+      if (!item || !isLeafNode(item.node)) return;
+      if (bitRow.nodeId && bitRow.nodeId !== selectedNodeId) {
+        state.searchCheckedIds.delete(bitRow.nodeId);
+      }
+      bitRow.nodeId = selectedNodeId;
+      bitRow.path = item.path;
+      state.searchCheckedIds.add(selectedNodeId);
+      closeBindBitModal();
+      renderSearchResults();
+      renderExchangeTable();
+      setStatus("BIT 子節點已綁定 Search Result 項目，並自動勾選該項目。");
+    }
+
+    function closeBindBitModal() {
+      pendingBitRowId = null;
+      dom.bindBitModal.classList.add("hidden");
+    }
+
+    function findExchangeRowById(rowId) {
+      for (const row of state.exchangeRows) {
+        if (row.id === rowId) return row;
+        if (row.type === "group" && Array.isArray(row.children)) {
+          const child = row.children.find(item => item.id === rowId);
+          if (child) return child;
+        }
+      }
+      return null;
     }
 
     function clearAllExchangeRows() {
       if (!state.exchangeRows.length) return;
       if (!confirm("確定要清空資料交換表嗎？")) return;
       state.exchangeRows = [];
+      state.selectedExchangeRowId = null;
       renderExchangeTable();
       setStatus("資料交換表已清空。");
     }
@@ -1896,6 +2224,7 @@
           state.selectedIds = new Set();
           state.copiedNode = null;
           state.searchCheckedIds = new Set();
+          state.selectedSearchResultId = null;
           state.searchKeywords = [];
           setStatus("已讀取 JSON 檔案。");
           render();
@@ -1934,14 +2263,25 @@
     }
 
     function normalizeExchangeRows(rows) {
-      return rows.map(row => ({
-        id: typeof row.id === "string" ? row.id : makeId(),
-        nodeId: typeof row.nodeId === "string" ? row.nodeId : "",
-        enabled: row.enabled !== false,
-        locked: Boolean(row.locked),
-        path: typeof row.path === "string" ? row.path : "",
-        plcAddress: typeof row.plcAddress === "string" ? row.plcAddress : ""
-      })).filter(row => row.path);
+      return rows.map(row => {
+        const normalizedType = ["row", "group", "bit"].includes(row.type) ? row.type : "row";
+        const normalized = {
+          type: normalizedType,
+          id: typeof row.id === "string" ? row.id : makeId(),
+          nodeId: typeof row.nodeId === "string" ? row.nodeId : "",
+          enabled: row.enabled !== false,
+          locked: Boolean(row.locked),
+          path: typeof row.path === "string" ? row.path : "",
+          dataSize: normalizedType === "bit" ? "BIT" : (DATA_SIZE_OPTIONS.includes(row.dataSize) ? row.dataSize : "WORD"),
+          plcAddress: typeof row.plcAddress === "string" ? row.plcAddress : ""
+        };
+        if (normalizedType === "group") {
+          normalized.children = Array.isArray(row.children) ? normalizeExchangeRows(row.children) : [];
+          normalized.children = normalized.children.map(child => ({ ...child, type: "bit", dataSize: "BIT" }));
+          reconcileGroupBitChildrenAfterSizeChange(normalized);
+        }
+        return normalized;
+      }).filter(row => row.path || row.type === "bit");
     }
 
     function setupSplitters() {
@@ -2041,7 +2381,17 @@
       renderSearchResults();
     });
     dom.addSelectedBtn.addEventListener("click", addSelectedToExchange);
+    dom.addGroupBtn.addEventListener("click", addExchangeGroup);
     dom.clearAllBtn.addEventListener("click", clearAllExchangeRows);
+    dom.cancelBindBitBtn.addEventListener("click", closeBindBitModal);
+    dom.confirmBindBitBtn.addEventListener("click", confirmBindBitRow);
+    dom.bindBitModal.addEventListener("mousedown", event => {
+      if (event.target === dom.bindBitModal) closeBindBitModal();
+    });
+    dom.bindBitSelect.addEventListener("keydown", event => {
+      if (event.key === "Enter") confirmBindBitRow();
+      if (event.key === "Escape") closeBindBitModal();
+    });
     dom.saveBtn.addEventListener("click", saveJson);
     dom.loadBtn.addEventListener("click", () => dom.fileInput.click());
     dom.fileInput.addEventListener("change", event => {
