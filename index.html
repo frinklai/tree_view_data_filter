@@ -764,7 +764,6 @@
         <div class="toolbar-title">樹狀節點資料交換工具</div>
         <input id="searchInput" type="text" placeholder="輸入搜尋關鍵字，按 Enter 加入" />
         <button id="addKeywordBtn" class="ghost">新增關鍵字</button>
-        <button id="addSelectedBtn">Add Selected</button>
         <button id="saveBtn">儲存檔案 JSON</button>
         <button id="loadBtn" class="secondary">讀取檔案 JSON</button>
         <input id="fileInput" class="hidden-file-input" type="file" accept="application/json,.json" />
@@ -818,6 +817,7 @@
         </div>
         <div class="search-toolbar">
           <button id="updateSearchBtn" class="ghost">Update</button>
+          <button id="addSelectedBtn">Add Selected</button>
           <span class="search-option-separator"></span>
           <input id="searchSelectAll" type="checkbox" />
           <label for="searchSelectAll">全部勾選 / 取消勾選</label>
@@ -1859,6 +1859,7 @@
         id: makeId(),
         enabled: true,
         locked: false,
+        expanded: true,
         path: groupName,
         dataSize: "WORD",
         plcAddress: "",
@@ -1929,15 +1930,17 @@
         if (row.type === "group") {
           ensureGroupBitChildren(row);
           dom.exchangeBody.appendChild(createExchangeRowElement(row, { isGroup: true }));
-          const validBitCount = getBitCountByDataSize(row.dataSize);
-          row.children.forEach((child, index) => {
-            dom.exchangeBody.appendChild(createExchangeRowElement(child, {
-              isBit: true,
-              parent: row,
-              bitIndex: index,
-              overflow: index >= validBitCount
-            }));
-          });
+          if (row.expanded !== false) {
+            const validBitCount = getBitCountByDataSize(row.dataSize);
+            row.children.forEach((child, index) => {
+              dom.exchangeBody.appendChild(createExchangeRowElement(child, {
+                isBit: true,
+                parent: row,
+                bitIndex: index,
+                overflow: index >= validBitCount
+              }));
+            });
+          }
         } else {
           dom.exchangeBody.appendChild(createExchangeRowElement(row));
         }
@@ -1992,8 +1995,25 @@
         pathSpan.className = "path-editable";
         pathSpan.textContent = row.path || "<NONE>";
         pathSpan.title = "Double click 修改 BIT 子節點變數名稱";
-        pathSpan.addEventListener("dblclick", () => openBindBitModal(row.id));
+        pathSpan.addEventListener("click", event => event.stopPropagation());
+        pathSpan.addEventListener("dblclick", event => {
+          event.stopPropagation();
+          openBindBitModal(row.id);
+        });
         pathTd.append(bitIndex, pathSpan);
+      } else if (options.isGroup) {
+        const toggle = document.createElement("span");
+        toggle.className = "expand-btn";
+        toggle.textContent = row.expanded === false ? "▸" : "▾";
+        toggle.title = row.expanded === false ? "展開 group" : "收折 group";
+        toggle.addEventListener("click", event => {
+          event.stopPropagation();
+          row.expanded = row.expanded === false;
+          renderExchangeTable();
+        });
+        const groupName = document.createElement("span");
+        groupName.textContent = row.path;
+        pathTd.append(toggle, groupName);
       } else {
         pathTd.textContent = row.path;
       }
@@ -2271,6 +2291,7 @@
           nodeId: typeof row.nodeId === "string" ? row.nodeId : "",
           enabled: row.enabled !== false,
           locked: Boolean(row.locked),
+          expanded: row.expanded !== false,
           path: typeof row.path === "string" ? row.path : "",
           dataSize: normalizedType === "bit" ? "BIT" : (DATA_SIZE_OPTIONS.includes(row.dataSize) ? row.dataSize : "WORD"),
           plcAddress: typeof row.plcAddress === "string" ? row.plcAddress : ""
@@ -2366,8 +2387,8 @@
     });
     dom.addKeywordBtn.addEventListener("click", addKeywordFromInput);
     dom.updateSearchBtn.addEventListener("click", () => {
-      updateSearchResults(true);
-      setStatus("已清空 Search Result 勾選狀態並重新搜尋。");
+      updateSearchResults(false);
+      setStatus("已保留 Search Result 勾選狀態並重新搜尋。");
     });
     dom.matchAllKeywords.addEventListener("change", () => updateSearchResults(true));
     dom.showLeafOnly.addEventListener("change", () => updateSearchResults(true));
