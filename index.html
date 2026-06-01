@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tree View Data Exchange UI</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --line: #d8dee9;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --danger-dark: #b91c1c;
+      --hover: #eef4ff;
+      --selected: #dbeafe;
+      --locked: #f3f4f6;
+      --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      --collapse-width: 44px;
+      --splitter-width: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft JhengHei", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .toolbar,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .toolbar-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+
+    .toolbar-main input[type="text"] {
+      min-width: 280px;
+      flex: 1;
+      max-width: 560px;
+    }
+
+    .keyword-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      min-height: 34px;
+      padding: 6px 0 0 0;
+      border-top: 1px solid #eef2f7;
+    }
+
+    .keyword-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .keyword-option input {
+      margin: 0;
+    }
+
+    .keyword-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 28px;
+      flex: 1;
+    }
+
+    .keyword-empty {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .keyword-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      max-width: 240px;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 0 4px 0 10px;
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .keyword-chip.inactive {
+      border-color: #d1d5db;
+      background: #f3f4f6;
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .keyword-chip-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .keyword-chip-remove {
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: inherit;
+      font-weight: 800;
+    }
+
+    .keyword-chip-remove:hover {
+      background: rgba(30, 58, 138, 0.14);
+    }
+
+    .search-option-separator {
+      width: 1px;
+      height: 18px;
+      background: var(--line);
+      margin: 0 2px;
+    }
+
+    input[type="text"] {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      outline: none;
+      background: #fff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    button {
+      height: 34px;
+      border: none;
+      border-radius: 8px;
+      padding: 0 12px;
+      cursor: pointer;
+      color: white;
+      background: var(--primary);
+      font-weight: 600;
+      transition: background 0.15s ease, transform 0.05s ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button.secondary {
+      background: #64748b;
+    }
+
+    button.secondary:hover {
+      background: #475569;
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button.danger:hover {
+      background: var(--danger-dark);
+    }
+
+    button.ghost {
+      color: var(--text);
+      background: #eef2f7;
+    }
+
+    button.ghost:hover {
+      background: #e2e8f0;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      min-width: 240px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: flex-basis 0.18s ease, min-width 0.18s ease;
+    }
+
+    .panel.collapsed {
+      flex: 0 0 var(--collapse-width) !important;
+      min-width: var(--collapse-width);
+      max-width: var(--collapse-width);
+    }
+
+    .panel[data-panel="tree"] {
+      flex: 1.2 1 0;
+    }
+
+    .panel[data-panel="search"] {
+      flex: 0.9 1 0;
+    }
+
+    .panel[data-panel="exchange"] {
+      flex: 1.1 1 0;
+    }
+
+    .splitter {
+      flex: 0 0 var(--splitter-width);
+      cursor: col-resize;
+      position: relative;
+    }
+
+    .splitter::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      bottom: 10px;
+      left: 3px;
+      width: 2px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: background 0.15s ease, width 0.15s ease;
+    }
+
+    .splitter:hover::before,
+    .splitter.dragging::before {
+      left: 2px;
+      width: 4px;
+      background: var(--primary);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      min-height: 59px;
+    }
+
+    .panel-title {
+      font-weight: 700;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .collapse-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 7px;
+      background: #eef2f7;
+      color: var(--text);
+      flex: 0 0 auto;
+    }
+
+    .collapse-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .collapsed-header {
+      display: none;
+      height: 100%;
+      width: 100%;
+      align-items: center;
+      justify-content: flex-start;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 6px;
+    }
+
+    .collapsed-title {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1px;
+      user-select: none;
+    }
+
+    .panel.collapsed > .panel-header,
+    .panel.collapsed > .panel-body,
+    .panel.collapsed > .search-toolbar,
+    .panel.collapsed > .hint,
+    .panel.collapsed > .status-bar {
+      display: none;
+    }
+
+    .panel.collapsed > .collapsed-header {
+      display: flex;
+    }
+
+    .panel-body {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    .tree-root,
+    .tree-children {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .tree-children {
+      margin-left: 24px;
+      border-left: 1px dashed #cbd5e1;
+      padding-left: 8px;
+    }
+
+    .tree-node {
+      margin: 2px 0;
+    }
+
+    .tree-row {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 24px 24px minmax(120px, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      border-radius: 8px;
+      padding: 2px 6px;
+      user-select: none;
+      border: 1px solid transparent;
+    }
+
+    .tree-row:hover {
+      background: var(--hover);
+    }
+
+    .tree-row.selected {
+      background: var(--selected);
+      border-color: #bfdbfe;
+    }
+
+    .tree-row.drag-over {
+      outline: 2px dashed var(--primary);
+      background: #eff6ff;
+    }
+
+    .tree-row.drag-before {
+      border-top: 3px solid var(--primary);
+    }
+
+    .tree-row.drag-after {
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .expand-btn {
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .expand-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .node-name {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    .node-name-input {
+      width: 100%;
+      height: 28px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      padding: 0 8px;
+      font: inherit;
+    }
+
+    .node-id {
+      color: var(--muted);
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .tree-row:hover .mini-actions,
+    .tree-row.selected .mini-actions {
+      opacity: 1;
+    }
+
+    .mini-actions button,
+    .icon-button {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 7px;
+      font-size: 12px;
+    }
+
+    .hint,
+    .status-bar {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .hint-text {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .search-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    .search-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .search-item {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid #eef2f7;
+      border-radius: 8px;
+    }
+
+    .search-item:hover {
+      background: var(--hover);
+    }
+
+    .path-text {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      text-align: center;
+      padding: 24px 12px;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      min-height: 0;
+      overflow: auto;
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 640px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fafc;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #eef2f7;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      font-weight: 700;
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    td.center,
+    th.center {
+      text-align: center;
+      width: 72px;
+    }
+
+    tr.locked-row {
+      background: var(--locked);
+    }
+
+    td.path-cell {
+      font-family: Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .plc-input {
+      width: 100%;
+      min-width: 140px;
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.42);
+    }
+
+    .modal-backdrop.hidden {
+      display: none;
+    }
+
+    .modal-card {
+      width: min(420px, calc(100vw - 32px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      gap: 6px;
+    }
+
+    .form-row label {
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-row input[type="number"] {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      outline: none;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 16px 16px;
+    }
+
+    @media (max-width: 960px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .workspace {
+        flex-direction: column;
+        gap: 12px;
+        overflow: visible;
+      }
+
+      .panel,
+      .panel.collapsed {
+        min-width: 100%;
+        max-width: none;
+        flex: 0 0 auto !important;
+        min-height: 280px;
+      }
+
+      .panel.collapsed {
+        min-height: 44px;
+      }
+
+      .collapsed-header {
+        flex-direction: row;
+        justify-content: flex-start;
+      }
+
+      .collapsed-title {
+        writing-mode: horizontal-tb;
+      }
+
+      .splitter {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="toolbar">
+      <div class="toolbar-main">
+        <div class="toolbar-title">樹狀節點資料交換工具</div>
+        <input id="searchInput" type="text" placeholder="輸入搜尋關鍵字，按 Enter 加入" />
+        <button id="addKeywordBtn" class="ghost">新增關鍵字</button>
+        <button id="addSelectedBtn">Add Selected</button>
+        <button id="saveBtn">儲存檔案 JSON</button>
+        <button id="loadBtn" class="secondary">讀取檔案 JSON</button>
+        <input id="fileInput" class="hidden-file-input" type="file" accept="application/json,.json" />
+      </div>
+      <div class="keyword-row">
+        <label class="keyword-option">
+          <input id="matchAllKeywords" type="checkbox" />
+          <span>所有關鍵字皆須符合</span>
+        </label>
+        <div id="keywordBar" class="keyword-bar"></div>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+      <section id="treePanel" class="panel" data-panel="tree">
+        <div class="collapsed-header">
+          <button class="collapse-btn" data-toggle-panel="tree" title="展開 Tree View">▶</button>
+          <div class="collapsed-title">Tree View</div>
+        </div>
+        <div class="panel-header">
+          <div class="panel-title">Tree View</div>
+          <div class="panel-actions">
+            <button class="collapse-btn" data-toggle-panel="tree" title="收折 Tree View">◀</button>
+            <button id="addRootBtn" class="ghost">新增根節點</button>
+            <button id="expandAllBtn" class="ghost">展開全部</button>
+            <button id="collapseAllBtn" class="ghost">收折全部</button>
+            <label class="keyword-option" title="以目前選取節點為主，勾選展開其底下節點，取消勾選收折其底下節點">
+              <input id="toggleSelectedExpand" type="checkbox" disabled />
+              <span>收折/展開選取節點</span>
+            </label>
+            <button id="deleteSelectedNodesBtn" class="danger">刪除選定節點</button>
+          </div>
+        </div>
+        <div id="treeContainer" class="panel-body"></div>
+        <div class="hint">拖拉到節點中間：成為該節點子節點。拖拉到節點上緣/下緣：改變同層順序。</div>
+      </section>
+
+      <div class="splitter" data-left="tree" data-right="search"></div>
+
+      <section id="searchPanel" class="panel" data-panel="search">
+        <div class="collapsed-header">
+          <button class="collapse-btn" data-toggle-panel="search" title="展開 Search Result">▶</button>
+          <div class="collapsed-title">Search Result</div>
+        </div>
+        <div class="panel-header">
+          <div class="panel-title">Search Result</div>
+          <div class="panel-actions">
+            <div id="searchCount" class="hint-text">0 筆</div>
+            <button class="collapse-btn" data-toggle-panel="search" title="收折 Search Result">◀</button>
+          </div>
+        </div>
+        <div class="search-toolbar">
+          <button id="updateSearchBtn" class="ghost">Update</button>
+          <span class="search-option-separator"></span>
+          <input id="searchSelectAll" type="checkbox" />
+          <label for="searchSelectAll">全部勾選 / 取消勾選</label>
+          <span class="search-option-separator"></span>
+          <input id="showLeafOnly" type="checkbox" />
+          <label for="showLeafOnly">只顯示葉節點</label>
+        </div>
+        <div id="searchResultContainer" class="panel-body"></div>
+        <div class="hint">搜尋結果格式：/grand-parent node/parent-node1/child-node1</div>
+      </section>
+
+      <div class="splitter" data-left="search" data-right="exchange"></div>
+
+      <section id="exchangePanel" class="panel" data-panel="exchange">
+        <div class="collapsed-header">
+          <button class="collapse-btn" data-toggle-panel="exchange" title="展開資料交換表">▶</button>
+          <div class="collapsed-title">資料交換表</div>
+        </div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">資料交換表</div>
+            <div class="hint-text">加入 Tree View 與 Search Result 中已勾選項目。</div>
+          </div>
+          <div class="panel-actions">
+            <button class="collapse-btn" data-toggle-panel="exchange" title="收折資料交換表">▶</button>
+            <button id="clearAllBtn" class="danger">Clear All</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="center">Enable</th>
+                <th class="center">Lock</th>
+                <th>變數名稱</th>
+                <th>PLC address</th>
+                <th class="center">刪除列</th>
+              </tr>
+            </thead>
+            <tbody id="exchangeBody"></tbody>
+          </table>
+        </div>
+        <div id="statusBar" class="status-bar">Ready</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="childModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">新增子節點</div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="childNameInput">子節點名稱前綴</label>
+          <input id="childNameInput" type="text" value="new child node" />
+        </div>
+        <div class="form-row">
+          <label for="childModalCountInput">子節點數量</label>
+          <input id="childModalCountInput" type="number" min="1" step="1" value="1" />
+        </div>
+        <div id="childModalHint" class="hint-text">系統會自動用 _編號 避免同層節點同名。</div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelChildModalBtn" class="ghost">取消</button>
+        <button id="confirmChildModalBtn">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      nodes: [
+        {
+          id: makeId(),
+          name: "grand-parent node",
+          checked: false,
+          expanded: true,
+          children: [
+            {
+              id: makeId(),
+              name: "parent-node1",
+              checked: false,
+              expanded: true,
+              children: [
+                { id: makeId(), name: "child-node1", checked: false, expanded: true, children: [] },
+                { id: makeId(), name: "child-node2", checked: false, expanded: true, children: [] }
+              ]
+            },
+            {
+              id: makeId(),
+              name: "parent-node2",
+              checked: false,
+              expanded: true,
+              children: []
+            }
+          ]
+        }
+      ],
+      selectedId: null,
+      selectedIds: new Set(),
+      copiedNode: null,
+      searchCheckedIds: new Set(),
+      searchKeywords: [],
+      exchangeRows: [],
+      collapsedPanels: {
+        tree: false,
+        search: false,
+        exchange: false
+      }
+    };
+
+    const dom = {
+      workspace: document.getElementById("workspace"),
+      searchInput: document.getElementById("searchInput"),
+      addKeywordBtn: document.getElementById("addKeywordBtn"),
+      keywordBar: document.getElementById("keywordBar"),
+      saveBtn: document.getElementById("saveBtn"),
+      loadBtn: document.getElementById("loadBtn"),
+      fileInput: document.getElementById("fileInput"),
+      treePanel: document.getElementById("treePanel"),
+      searchPanel: document.getElementById("searchPanel"),
+      exchangePanel: document.getElementById("exchangePanel"),
+      treeContainer: document.getElementById("treeContainer"),
+      addRootBtn: document.getElementById("addRootBtn"),
+      expandAllBtn: document.getElementById("expandAllBtn"),
+      collapseAllBtn: document.getElementById("collapseAllBtn"),
+      toggleSelectedExpand: document.getElementById("toggleSelectedExpand"),
+      deleteSelectedNodesBtn: document.getElementById("deleteSelectedNodesBtn"),
+      updateSearchBtn: document.getElementById("updateSearchBtn"),
+      searchSelectAll: document.getElementById("searchSelectAll"),
+      showLeafOnly: document.getElementById("showLeafOnly"),
+      matchAllKeywords: document.getElementById("matchAllKeywords"),
+      searchCount: document.getElementById("searchCount"),
+      searchResultContainer: document.getElementById("searchResultContainer"),
+      addSelectedBtn: document.getElementById("addSelectedBtn"),
+      clearAllBtn: document.getElementById("clearAllBtn"),
+      exchangeBody: document.getElementById("exchangeBody"),
+      statusBar: document.getElementById("statusBar"),
+      childModal: document.getElementById("childModal"),
+      childNameInput: document.getElementById("childNameInput"),
+      childModalCountInput: document.getElementById("childModalCountInput"),
+      cancelChildModalBtn: document.getElementById("cancelChildModalBtn"),
+      confirmChildModalBtn: document.getElementById("confirmChildModalBtn")
+    };
+
+    const panelMap = {
+      tree: dom.treePanel,
+      search: dom.searchPanel,
+      exchange: dom.exchangePanel
+    };
+
+    const METADATA_KEY = "__METEDATA__";
+    const METADATA_COMPAT_KEYS = ["__METEDATA__", "__METADATA__"];
+
+    let pendingChildParentId = null;
+
+    function makeId() {
+      return "node_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+    }
+
+    function cloneNode(node) {
+      return {
+        id: makeId(),
+        name: node.name + " copy",
+        checked: false,
+        expanded: true,
+        children: node.children.map(cloneNode)
+      };
+    }
+
+    function getAllNodes(nodes = state.nodes, parentPath = "") {
+      const result = [];
+      for (const node of nodes) {
+        const path = parentPath + "/" + node.name;
+        result.push({ node, path });
+        result.push(...getAllNodes(node.children, path));
+      }
+      return result;
+    }
+
+    function findNodeAndParent(id, nodes = state.nodes, parent = null) {
+      for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index];
+        if (node.id === id) {
+          return { node, parent, siblings: nodes, index };
+        }
+        const childResult = findNodeAndParent(id, node.children, node);
+        if (childResult) return childResult;
+      }
+      return null;
+    }
+
+    function isDescendant(parentNode, possibleChildId) {
+      for (const child of parentNode.children) {
+        if (child.id === possibleChildId) return true;
+        if (isDescendant(child, possibleChildId)) return true;
+      }
+      return false;
+    }
+
+    function setStatus(message) {
+      dom.statusBar.textContent = message;
+    }
+
+    function render() {
+      renderTree();
+      renderKeywordButtons();
+      renderSearchResults();
+      renderExchangeTable();
+      updateButtonState();
+      applyPanelCollapseState();
+    }
+
+    function applyPanelCollapseState() {
+      for (const [key, isCollapsed] of Object.entries(state.collapsedPanels)) {
+        panelMap[key].classList.toggle("collapsed", isCollapsed);
+        if (!isCollapsed && !panelMap[key].style.flexBasis) {
+          panelMap[key].style.removeProperty("max-width");
+        }
+      }
+    }
+
+    function togglePanel(panelKey) {
+      state.collapsedPanels[panelKey] = !state.collapsedPanels[panelKey];
+      if (!state.collapsedPanels[panelKey]) {
+        panelMap[panelKey].style.removeProperty("max-width");
+        if (!panelMap[panelKey].style.flexBasis) {
+          panelMap[panelKey].style.flex = panelKey === "tree" ? "1.2 1 0" : panelKey === "search" ? "0.9 1 0" : "1.1 1 0";
+        }
+      }
+      applyPanelCollapseState();
+    }
+
+    function renderTree() {
+      dom.treeContainer.innerHTML = "";
+      if (state.nodes.length === 0) {
+        dom.treeContainer.innerHTML = '<div class="empty-state">目前沒有節點，請按「新增根節點」。</div>';
+        return;
+      }
+      const root = document.createElement("ul");
+      root.className = "tree-root";
+      state.nodes.forEach(node => root.appendChild(createTreeNodeElement(node)));
+      dom.treeContainer.appendChild(root);
+    }
+
+    function createTreeNodeElement(node) {
+      const li = document.createElement("li");
+      li.className = "tree-node";
+
+      const row = document.createElement("div");
+      row.className = "tree-row" + (state.selectedIds.has(node.id) ? " selected" : "");
+      row.draggable = true;
+      row.dataset.id = node.id;
+
+      const expand = document.createElement("span");
+      expand.className = "expand-btn";
+      expand.textContent = node.children.length ? (node.expanded ? "▾" : "▸") : "";
+      expand.addEventListener("click", event => {
+        event.stopPropagation();
+        node.expanded = !node.expanded;
+        render();
+      });
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = node.checked;
+      checkbox.addEventListener("click", event => event.stopPropagation());
+      checkbox.addEventListener("change", event => {
+        setNodeCheckedRecursive(node, event.target.checked);
+        renderTree();
+        renderSearchResults();
+        renderExchangeTable();
+        updateButtonState();
+      });
+
+      const name = document.createElement("div");
+      name.className = "node-name";
+      name.title = node.name;
+      name.innerHTML = `${escapeHtml(node.name)} <span class="node-id">${node.children.length} child</span>`;
+      name.addEventListener("click", event => {
+        // Avoid row-level click re-rendering before dblclick can enter rename mode.
+        event.stopPropagation();
+        selectNode(node.id, event.ctrlKey || event.metaKey);
+      });
+      name.addEventListener("dblclick", event => {
+        event.stopPropagation();
+        state.selectedId = node.id;
+        beginInlineRename(node, name);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "mini-actions";
+      actions.innerHTML = `
+        <button class="icon-button ghost" title="新增子節點">＋</button>
+        <button class="icon-button ghost" title="複製此節點與所有子節點">⧉</button>
+        <button class="icon-button ghost" title="貼上到此節點底下" ${state.copiedNode ? "" : "disabled"}>⤵</button>
+        <button class="icon-button danger" title="刪除此節點與所有子節點">×</button>
+      `;
+      const [addBtn, copyBtn, pasteBtn, removeBtn] = actions.querySelectorAll("button");
+      addBtn.addEventListener("click", event => {
+        event.stopPropagation();
+        addChildNode(node.id);
+      });
+      copyBtn.addEventListener("click", event => {
+        event.stopPropagation();
+        copyNode(node.id);
+      });
+      pasteBtn.addEventListener("click", event => {
+        event.stopPropagation();
+        pasteToNode(node.id);
+      });
+      removeBtn.addEventListener("click", event => {
+        event.stopPropagation();
+        state.selectedId = node.id;
+        deleteSelectedNode();
+      });
+
+      row.append(expand, checkbox, name, actions);
+      row.addEventListener("click", event => {
+        selectNode(node.id, event.ctrlKey || event.metaKey);
+      });
+
+      bindDragEvents(row, node);
+      li.appendChild(row);
+
+      if (node.expanded && node.children.length) {
+        const children = document.createElement("ul");
+        children.className = "tree-children";
+        node.children.forEach(child => children.appendChild(createTreeNodeElement(child)));
+        li.appendChild(children);
+      }
+
+      return li;
+    }
+
+    function bindDragEvents(row, targetNode) {
+      row.addEventListener("dragstart", event => {
+        const dragIds = state.selectedIds.has(targetNode.id)
+          ? [...state.selectedIds]
+          : [targetNode.id];
+
+        if (!state.selectedIds.has(targetNode.id)) {
+          selectNode(targetNode.id);
+        }
+
+        event.dataTransfer.setData("application/json", JSON.stringify(dragIds));
+        event.dataTransfer.setData("text/plain", targetNode.id);
+        event.dataTransfer.effectAllowed = "move";
+      });
+
+      row.addEventListener("dragover", event => {
+        event.preventDefault();
+        const position = getDropPosition(event, row);
+        row.classList.toggle("drag-before", position === "before");
+        row.classList.toggle("drag-after", position === "after");
+        row.classList.toggle("drag-over", position === "inside");
+      });
+
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("drag-before", "drag-after", "drag-over");
+      });
+
+      row.addEventListener("drop", event => {
+        event.preventDefault();
+        row.classList.remove("drag-before", "drag-after", "drag-over");
+        const rawDragIds = event.dataTransfer.getData("application/json");
+        const sourceId = event.dataTransfer.getData("text/plain");
+        const targetId = targetNode.id;
+        const position = getDropPosition(event, row);
+
+        let sourceIds = [sourceId];
+        try {
+          const parsed = JSON.parse(rawDragIds);
+          if (Array.isArray(parsed) && parsed.length) sourceIds = parsed;
+        } catch (_) {
+          sourceIds = [sourceId];
+        }
+
+        moveNodes(sourceIds, targetId, position);
+      });
+    }
+
+    function getDropPosition(event, row) {
+      const rect = row.getBoundingClientRect();
+      const y = event.clientY - rect.top;
+      if (y < rect.height * 0.25) return "before";
+      if (y > rect.height * 0.75) return "after";
+      return "inside";
+    }
+
+    function moveNodes(sourceIds, targetId, position) {
+      const uniqueSourceIds = [...new Set(sourceIds)].filter(Boolean);
+      if (!uniqueSourceIds.length || !targetId) return;
+
+      if (uniqueSourceIds.includes(targetId)) {
+        setStatus("不能把選定節點拖放到選定節點本身。");
+        return;
+      }
+
+      const selectedInfos = uniqueSourceIds
+        .map(id => findNodeAndParent(id))
+        .filter(Boolean);
+      const targetInfo = findNodeAndParent(targetId);
+      if (!selectedInfos.length || !targetInfo) return;
+
+      for (const info of selectedInfos) {
+        if (isDescendant(info.node, targetId)) {
+          setStatus("不能把父節點拖到自己的子節點底下。");
+          return;
+        }
+      }
+
+      const topLevelSourceIds = getTopLevelSelectedIds(uniqueSourceIds);
+      const movingNodes = extractNodesByIds(topLevelSourceIds);
+      if (!movingNodes.length) return;
+
+      const refreshedTargetInfo = findNodeAndParent(targetId);
+      if (!refreshedTargetInfo) return;
+
+      if (position === "inside") {
+        refreshedTargetInfo.node.children.push(...movingNodes);
+        refreshedTargetInfo.node.expanded = true;
+      } else {
+        const insertIndex = position === "before" ? refreshedTargetInfo.index : refreshedTargetInfo.index + 1;
+        refreshedTargetInfo.siblings.splice(insertIndex, 0, ...movingNodes);
+      }
+
+      state.selectedIds = new Set(movingNodes.map(node => node.id));
+      state.selectedId = movingNodes[movingNodes.length - 1].id;
+      setStatus(`已移動 ${movingNodes.length} 個選定節點。`);
+      render();
+    }
+
+    function getTopLevelSelectedIds(selectedIds) {
+      const selectedSet = new Set(selectedIds);
+      const result = [];
+
+      function walk(nodes, hasSelectedAncestor) {
+        for (const node of nodes) {
+          const isSelected = selectedSet.has(node.id);
+          if (isSelected && !hasSelectedAncestor) {
+            result.push(node.id);
+          }
+          walk(node.children, hasSelectedAncestor || isSelected);
+        }
+      }
+
+      walk(state.nodes, false);
+      return result;
+    }
+
+    function extractNodesByIds(ids) {
+      const idSet = new Set(ids);
+      const extracted = [];
+
+      function walk(nodes) {
+        const kept = [];
+        for (const node of nodes) {
+          if (idSet.has(node.id)) {
+            extracted.push(node);
+          } else {
+            node.children = walk(node.children);
+            kept.push(node);
+          }
+        }
+        return kept;
+      }
+
+      state.nodes = walk(state.nodes);
+      return extracted;
+    }
+
+    function setNodeCheckedRecursive(node, checked) {
+      node.checked = checked;
+      for (const child of node.children) {
+        setNodeCheckedRecursive(child, checked);
+      }
+    }
+
+    function isLeafNode(node) {
+      return node.children.length === 0;
+    }
+
+    function updateButtonState() {
+      const hasSelection = state.selectedIds.size > 0;
+      const focusedNodeInfo = state.selectedId ? findNodeAndParent(state.selectedId) : null;
+
+      dom.deleteSelectedNodesBtn.disabled = !hasSelection;
+      dom.toggleSelectedExpand.disabled = !focusedNodeInfo;
+      if (!focusedNodeInfo) {
+        dom.toggleSelectedExpand.checked = false;
+      }
+      // Other tree node operations are handled directly on each node row.
+    }
+
+    function selectNode(id, additive = false) {
+      if (additive) {
+        if (state.selectedIds.has(id)) {
+          state.selectedIds.delete(id);
+          if (state.selectedId === id) {
+            state.selectedId = [...state.selectedIds].at(-1) || null;
+          }
+        } else {
+          state.selectedIds.add(id);
+          state.selectedId = id;
+        }
+      } else {
+        state.selectedIds.clear();
+        state.selectedIds.add(id);
+        state.selectedId = id;
+      }
+
+      document.querySelectorAll(".tree-row").forEach(row => {
+        row.classList.toggle("selected", state.selectedIds.has(row.dataset.id));
+      });
+      updateButtonState();
+    }
+
+    function applyExpandOrCollapse(expanded) {
+      const useSelectedScope = dom.toggleSelectedExpand.checked && !dom.toggleSelectedExpand.disabled;
+
+      if (useSelectedScope) {
+        const selected = state.selectedId ? findNodeAndParent(state.selectedId) : null;
+        if (!selected) return;
+        setExpandedForNodeAndChildren(selected.node, expanded);
+        setStatus(expanded ? "已展開選取節點底下所有節點。" : "已收折選取節點底下所有節點。");
+        render();
+        return;
+      }
+
+      setExpandedForAll(expanded);
+      setStatus(expanded ? "已展開全部節點。" : "已收折全部節點。");
+      render();
+    }
+
+    function setExpandedForAll(expanded) {
+      function walk(nodes) {
+        for (const node of nodes) {
+          node.expanded = expanded;
+          walk(node.children);
+        }
+      }
+      walk(state.nodes);
+    }
+
+    function setExpandedForNodeAndChildren(node, expanded) {
+      node.expanded = expanded;
+      for (const child of node.children) {
+        setExpandedForNodeAndChildren(child, expanded);
+      }
+    }
+
+    function addRootNode() {
+      const name = prompt("請輸入根節點名稱：", "new root node");
+      if (!name) return;
+      const node = { id: makeId(), name: name.trim(), checked: false, expanded: true, children: [] };
+      state.nodes.push(node);
+      state.selectedId = node.id;
+      state.selectedIds = new Set([node.id]);
+      setStatus("已新增根節點。");
+      render();
+    }
+
+    function addChildNode(parentId = state.selectedId) {
+      const selected = findNodeAndParent(parentId);
+      if (!selected) return;
+      pendingChildParentId = parentId;
+      dom.childNameInput.value = "new child node";
+      dom.childModalCountInput.value = "1";
+      dom.childModal.classList.remove("hidden");
+      setTimeout(() => {
+        dom.childNameInput.focus();
+        dom.childNameInput.select();
+      }, 0);
+    }
+
+    function confirmAddChildNodes() {
+      if (!pendingChildParentId) return;
+      const selected = findNodeAndParent(pendingChildParentId);
+      if (!selected) return;
+
+      const baseName = dom.childNameInput.value.trim();
+      if (!baseName) {
+        dom.childNameInput.focus();
+        return;
+      }
+
+      const count = getChildModalAddCount();
+      const addedNodes = [];
+      for (let i = 0; i < count; i++) {
+        const childName = count === 1
+          ? createUniquePlainName(baseName, selected.node.children)
+          : createUniqueIndexedName(baseName, selected.node.children);
+        const child = { id: makeId(), name: childName, checked: false, expanded: true, children: [] };
+        selected.node.children.push(child);
+        addedNodes.push(child);
+      }
+
+      selected.node.expanded = true;
+      state.selectedId = addedNodes[addedNodes.length - 1].id;
+      state.selectedIds = new Set([state.selectedId]);
+      closeChildModal();
+      setStatus(`已新增 ${addedNodes.length} 個子節點。`);
+      render();
+    }
+
+    function closeChildModal() {
+      pendingChildParentId = null;
+      dom.childModal.classList.add("hidden");
+    }
+
+    function getChildModalAddCount() {
+      const value = Number.parseInt(dom.childModalCountInput.value, 10);
+      if (!Number.isFinite(value) || value < 1) {
+        dom.childModalCountInput.value = "1";
+        return 1;
+      }
+      return value;
+    }
+
+    function createUniquePlainName(baseName, siblings) {
+      const existingNames = new Set(siblings.map(node => node.name));
+      if (!existingNames.has(baseName)) return baseName;
+      return createUniqueIndexedName(baseName, siblings);
+    }
+
+    function createUniqueIndexedName(baseName, siblings) {
+      const existingNames = new Set(siblings.map(node => node.name));
+      let index = 1;
+      let candidate = `${baseName}_${index}`;
+      while (existingNames.has(candidate)) {
+        index++;
+        candidate = `${baseName}_${index}`;
+      }
+      return candidate;
+    }
+
+    function beginInlineRename(node, nameElement) {
+      const input = document.createElement("input");
+      let committed = false;
+
+      input.type = "text";
+      input.className = "node-name-input";
+      input.value = node.name;
+      input.addEventListener("click", event => event.stopPropagation());
+      input.addEventListener("dblclick", event => event.stopPropagation());
+
+      function commit() {
+        if (committed) return;
+        committed = true;
+        const nextName = input.value.trim();
+        if (nextName) {
+          node.name = nextName;
+          setStatus("節點名稱已更新。");
+        }
+        render();
+      }
+
+      function cancel() {
+        if (committed) return;
+        committed = true;
+        render();
+      }
+
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") commit();
+        if (event.key === "Escape") cancel();
+      });
+      input.addEventListener("blur", commit);
+
+      nameElement.replaceWith(input);
+      input.focus();
+      input.select();
+    }
+
+    function deleteSelectedNode() {
+      const selected = findNodeAndParent(state.selectedId);
+      if (!selected) return;
+      if (!confirm(`確定要刪除「${selected.node.name}」以及其所有子節點嗎？`)) return;
+      removeSearchChecksRecursively(selected.node);
+      selected.siblings.splice(selected.index, 1);
+      state.selectedId = null;
+      state.selectedIds.clear();
+      setStatus("節點已刪除。資料交換表中的既有列不會自動刪除。");
+      render();
+    }
+
+    function deleteSelectedNodes() {
+      if (state.selectedIds.size === 0) return;
+      const selectedIds = new Set(state.selectedIds);
+      const count = selectedIds.size;
+      if (!confirm(`確定要刪除 ${count} 個選定節點以及其所有子節點嗎？`)) return;
+
+      state.nodes = removeSelectedNodesRecursive(state.nodes, selectedIds);
+      state.selectedId = null;
+      state.selectedIds.clear();
+      setStatus(`已刪除 ${count} 個選定節點。資料交換表中的既有列不會自動刪除。`);
+      render();
+    }
+
+    function removeSelectedNodesRecursive(nodes, selectedIds) {
+      const result = [];
+      for (const node of nodes) {
+        if (selectedIds.has(node.id)) {
+          removeSearchChecksRecursively(node);
+          continue;
+        }
+        node.children = removeSelectedNodesRecursive(node.children, selectedIds);
+        result.push(node);
+      }
+      return result;
+    }
+
+    function removeSearchChecksRecursively(node) {
+      state.searchCheckedIds.delete(node.id);
+      node.children.forEach(removeSearchChecksRecursively);
+    }
+
+    function copyNode(id) {
+      const selected = findNodeAndParent(id);
+      if (!selected) return;
+      state.copiedNode = JSON.parse(JSON.stringify(selected.node));
+      setStatus(`已複製節點與其所有子節點：${selected.node.name}`);
+      render();
+    }
+
+    function pasteToNode(targetId) {
+      const selected = findNodeAndParent(targetId);
+      if (!selected || !state.copiedNode) return;
+      const cloned = cloneNode(state.copiedNode);
+      selected.node.children.push(cloned);
+      selected.node.expanded = true;
+      state.selectedId = cloned.id;
+      state.selectedIds = new Set([cloned.id]);
+      setStatus("已貼上整個節點樹到目標節點底下。");
+      render();
+    }
+
+    function renderSearchResults() {
+      const activeKeywords = getActiveKeywords();
+      const scopedNodes = getSearchScopedNodes();
+      const requireAllKeywords = dom.matchAllKeywords.checked;
+      const matches = activeKeywords.length && scopedNodes.length
+        ? scopedNodes.filter(item => {
+            const searchableText = item.path.toLowerCase();
+            return requireAllKeywords
+              ? activeKeywords.every(keyword => searchableText.includes(keyword))
+              : activeKeywords.some(keyword => searchableText.includes(keyword));
+          })
+        : [];
+
+      dom.searchResultContainer.innerHTML = "";
+      dom.searchCount.textContent = `${matches.length} 筆`;
+
+      const matchIds = new Set(matches.map(item => item.node.id));
+      for (const id of [...state.searchCheckedIds]) {
+        if (!matchIds.has(id)) state.searchCheckedIds.delete(id);
+      }
+
+      if (!activeKeywords.length) {
+        dom.searchResultContainer.innerHTML = '<div class="empty-state">請在上方工具列新增並啟動至少一個搜尋關鍵字。</div>';
+        dom.searchSelectAll.checked = false;
+        dom.searchSelectAll.indeterminate = false;
+        return;
+      }
+
+      if (!scopedNodes.length) {
+        dom.searchResultContainer.innerHTML = '<div class="empty-state">請先在 Tree View 勾選要搜尋的節點範圍。</div>';
+        dom.searchSelectAll.checked = false;
+        dom.searchSelectAll.indeterminate = false;
+        return;
+      }
+
+      if (!matches.length) {
+        dom.searchResultContainer.innerHTML = '<div class="empty-state">沒有符合的節點。</div>';
+        dom.searchSelectAll.checked = false;
+        dom.searchSelectAll.indeterminate = false;
+        return;
+      }
+
+      const list = document.createElement("ul");
+      list.className = "search-list";
+      for (const item of matches) {
+        const li = document.createElement("li");
+        li.className = "search-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = state.searchCheckedIds.has(item.node.id);
+        checkbox.addEventListener("change", event => {
+          if (event.target.checked) {
+            state.searchCheckedIds.add(item.node.id);
+          } else {
+            state.searchCheckedIds.delete(item.node.id);
+          }
+          updateSearchSelectAll(matches);
+        });
+
+        const path = document.createElement("div");
+        path.className = "path-text";
+        path.textContent = item.path;
+        path.title = "點選可定位 Tree View 節點";
+        path.addEventListener("click", () => {
+          state.selectedId = item.node.id;
+          state.selectedIds = new Set([item.node.id]);
+          expandAncestors(item.node.id);
+          render();
+        });
+
+        li.append(checkbox, path);
+        list.appendChild(li);
+      }
+
+      dom.searchResultContainer.appendChild(list);
+      updateSearchSelectAll(matches);
+    }
+
+    function updateSearchSelectAll(matches = null) {
+      const currentMatches = matches || getCurrentSearchMatches();
+      if (!currentMatches.length) {
+        dom.searchSelectAll.checked = false;
+        dom.searchSelectAll.indeterminate = false;
+        return;
+      }
+      const checkedCount = currentMatches.filter(item => state.searchCheckedIds.has(item.node.id)).length;
+      dom.searchSelectAll.checked = checkedCount === currentMatches.length;
+      dom.searchSelectAll.indeterminate = checkedCount > 0 && checkedCount < currentMatches.length;
+    }
+
+    function getCurrentSearchMatches() {
+      const activeKeywords = getActiveKeywords();
+      if (!activeKeywords.length) return [];
+      const requireAllKeywords = dom.matchAllKeywords.checked;
+      return getSearchScopedNodes().filter(item => {
+        const searchableText = item.path.toLowerCase();
+        return requireAllKeywords
+          ? activeKeywords.every(keyword => searchableText.includes(keyword))
+          : activeKeywords.some(keyword => searchableText.includes(keyword));
+      });
+    }
+
+    function getSearchScopedNodes() {
+      // Search Result always returns leaf nodes only.
+      // The searchable range is still controlled by checked nodes in Tree View.
+      return getAllNodes().filter(item => item.node.checked && isLeafNode(item.node));
+    }
+
+    function getActiveKeywords() {
+      return state.searchKeywords
+        .filter(keyword => keyword.active)
+        .map(keyword => keyword.text.trim().toLowerCase())
+        .filter(Boolean);
+    }
+
+    function addKeywordFromInput() {
+      const rawText = dom.searchInput.value.trim();
+      if (!rawText) return;
+      addSearchKeyword(rawText);
+      dom.searchInput.value = "";
+      renderKeywordButtons();
+      updateSearchResults(true);
+    }
+
+    function updateSearchResults(clearChecked = false) {
+      if (clearChecked) {
+        state.searchCheckedIds.clear();
+      }
+      renderSearchResults();
+    }
+
+    function addSearchKeyword(rawText) {
+      const text = rawText.trim();
+      if (!text) return;
+      const existed = state.searchKeywords.find(keyword => keyword.text.toLowerCase() === text.toLowerCase());
+      if (existed) {
+        existed.active = true;
+        state.searchKeywords = [existed, ...state.searchKeywords.filter(keyword => keyword.id !== existed.id)];
+        setStatus(`已啟用既有搜尋關鍵字：${text}`);
+        updateSearchResults(true);
+        return;
+      }
+      state.searchKeywords.unshift({
+        id: makeId(),
+        text,
+        active: true
+      });
+      setStatus(`已新增搜尋關鍵字：${text}`);
+      updateSearchResults(true);
+    }
+
+    function renderKeywordButtons() {
+      dom.keywordBar.innerHTML = "";
+      if (!state.searchKeywords.length) {
+        dom.keywordBar.innerHTML = '<span class="keyword-empty">尚未新增搜尋關鍵字。輸入文字後按 Enter，或按「新增關鍵字」。</span>';
+        return;
+      }
+
+      for (const keyword of state.searchKeywords) {
+        const chip = document.createElement("div");
+        chip.className = "keyword-chip" + (keyword.active ? "" : " inactive");
+        chip.title = keyword.active ? "點擊停用此關鍵字" : "點擊啟用此關鍵字";
+
+        const text = document.createElement("span");
+        text.className = "keyword-chip-text";
+        text.textContent = keyword.text;
+
+        const remove = document.createElement("span");
+        remove.className = "keyword-chip-remove";
+        remove.textContent = "×";
+        remove.title = "移除此關鍵字";
+
+        chip.addEventListener("click", () => {
+          keyword.active = !keyword.active;
+          setStatus(`${keyword.active ? "已啟用" : "已停用"}搜尋關鍵字：${keyword.text}`);
+          renderKeywordButtons();
+          updateSearchResults(true);
+        });
+
+        remove.addEventListener("click", event => {
+          event.stopPropagation();
+          state.searchKeywords = state.searchKeywords.filter(item => item.id !== keyword.id);
+          setStatus(`已移除搜尋關鍵字：${keyword.text}`);
+          renderKeywordButtons();
+          updateSearchResults(true);
+        });
+
+        chip.append(text, remove);
+        dom.keywordBar.appendChild(chip);
+      }
+    }
+
+    function expandAncestors(targetId, nodes = state.nodes) {
+      for (const node of nodes) {
+        if (node.id === targetId) return true;
+        if (expandAncestors(targetId, node.children)) {
+          node.expanded = true;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function addSelectedToExchange() {
+      const leafOnly = true;
+      const selectedFromTree = getAllNodes().filter(item => item.node.checked && isLeafNode(item.node));
+      const selectedFromSearch = getAllNodes().filter(item => state.searchCheckedIds.has(item.node.id) && isLeafNode(item.node));
+      const merged = new Map();
+
+      for (const item of [...selectedFromTree, ...selectedFromSearch]) {
+        merged.set(item.node.id, item);
+      }
+
+      if (merged.size === 0) {
+        setStatus("沒有任何已勾選的葉節點可加入資料交換表。");
+        return;
+      }
+
+      const existingPaths = new Set(state.exchangeRows.map(row => row.path));
+      let added = 0;
+
+      for (const item of merged.values()) {
+        if (existingPaths.has(item.path)) continue;
+        state.exchangeRows.push({
+          id: makeId(),
+          nodeId: item.node.id,
+          enabled: true,
+          locked: false,
+          path: item.path,
+          plcAddress: ""
+        });
+        existingPaths.add(item.path);
+        added++;
+      }
+
+      setStatus(`已加入 ${added} 筆資料交換列。重複路徑會自動略過。`);
+      renderExchangeTable();
+    }
+
+    function renderExchangeTable() {
+      dom.exchangeBody.innerHTML = "";
+      if (state.exchangeRows.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = '<td colspan="5" class="empty-state">尚未加入任何資料交換項目。</td>';
+        dom.exchangeBody.appendChild(tr);
+        return;
+      }
+
+      for (const row of state.exchangeRows) {
+        const tr = document.createElement("tr");
+        if (row.locked) tr.className = "locked-row";
+
+        const enableTd = document.createElement("td");
+        enableTd.className = "center";
+        const enableCheckbox = document.createElement("input");
+        enableCheckbox.type = "checkbox";
+        enableCheckbox.checked = row.enabled;
+        enableCheckbox.disabled = row.locked;
+        enableCheckbox.addEventListener("change", event => {
+          row.enabled = event.target.checked;
+        });
+        enableTd.appendChild(enableCheckbox);
+
+        const lockTd = document.createElement("td");
+        lockTd.className = "center";
+        const lockCheckbox = document.createElement("input");
+        lockCheckbox.type = "checkbox";
+        lockCheckbox.checked = row.locked;
+        lockCheckbox.addEventListener("change", event => {
+          row.locked = event.target.checked;
+          renderExchangeTable();
+        });
+        lockTd.appendChild(lockCheckbox);
+
+        const pathTd = document.createElement("td");
+        pathTd.className = "path-cell";
+        pathTd.textContent = row.path;
+
+        const plcTd = document.createElement("td");
+        const plcInput = document.createElement("input");
+        plcInput.type = "text";
+        plcInput.className = "plc-input";
+        plcInput.placeholder = "例如：D100 / MW10 / DB1.DBW0";
+        plcInput.value = row.plcAddress;
+        plcInput.disabled = row.locked;
+        plcInput.addEventListener("input", event => {
+          row.plcAddress = event.target.value;
+        });
+        plcTd.appendChild(plcInput);
+
+        const deleteTd = document.createElement("td");
+        deleteTd.className = "center";
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "icon-button danger";
+        deleteBtn.textContent = "×";
+        deleteBtn.title = "刪除列";
+        deleteBtn.disabled = row.locked;
+        deleteBtn.addEventListener("click", () => {
+          state.exchangeRows = state.exchangeRows.filter(item => item.id !== row.id);
+          renderExchangeTable();
+          setStatus("資料交換列已刪除。");
+        });
+        deleteTd.appendChild(deleteBtn);
+
+        tr.append(enableTd, lockTd, pathTd, plcTd, deleteTd);
+        dom.exchangeBody.appendChild(tr);
+      }
+    }
+
+    function clearAllExchangeRows() {
+      if (!state.exchangeRows.length) return;
+      if (!confirm("確定要清空資料交換表嗎？")) return;
+      state.exchangeRows = [];
+      renderExchangeTable();
+      setStatus("資料交換表已清空。");
+    }
+
+    async function saveJson() {
+      const payload = buildExportPayload();
+      const jsonText = JSON.stringify(payload, null, 2);
+      const defaultFileName = "tree-data-exchange.json";
+
+      if (window.showSaveFilePicker) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: defaultFileName,
+            types: [
+              {
+                description: "JSON file",
+                accept: { "application/json": [".json"] }
+              }
+            ]
+          });
+          const writable = await fileHandle.createWritable();
+          await writable.write(jsonText);
+          await writable.close();
+          setStatus("已依指定路徑與檔名匯出 JSON 檔案。");
+          return;
+        } catch (error) {
+          if (error.name === "AbortError") {
+            setStatus("已取消匯出 JSON 檔案。");
+            return;
+          }
+          console.warn(error);
+        }
+      }
+
+      const fallbackName = prompt("請輸入要匯出的 JSON 檔案名稱：", defaultFileName);
+      if (!fallbackName) {
+        setStatus("已取消匯出 JSON 檔案。");
+        return;
+      }
+      downloadJson(jsonText, fallbackName.endsWith(".json") ? fallbackName : `${fallbackName}.json`);
+      setStatus("瀏覽器不支援指定路徑時，已改用下載方式匯出 JSON 檔案。");
+    }
+
+    function buildExportPayload() {
+      return {
+        [METADATA_KEY]: {
+          schemaVersion: 2,
+          exportedAt: new Date().toISOString(),
+          appName: "Tree View Data Exchange UI",
+          appDataKeys: ["tree", "exchangeRows"],
+          note: "This section is reserved for application metadata. User-edited data is stored outside this object."
+        },
+        tree: state.nodes,
+        exchangeRows: state.exchangeRows
+      };
+    }
+
+    function downloadJson(jsonText, fileName) {
+      const blob = new Blob([jsonText], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadJsonFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = event => {
+        try {
+          const payload = JSON.parse(event.target.result);
+          const normalizedPayload = normalizeLoadedPayload(payload);
+          const loadedTree = normalizedPayload.tree;
+          if (!Array.isArray(loadedTree)) throw new Error("Invalid tree data");
+          state.nodes = normalizeNodes(loadedTree);
+          state.exchangeRows = Array.isArray(normalizedPayload.exchangeRows) ? normalizeExchangeRows(normalizedPayload.exchangeRows) : [];
+          state.selectedId = null;
+          state.selectedIds = new Set();
+          state.copiedNode = null;
+          state.searchCheckedIds = new Set();
+          state.searchKeywords = [];
+          setStatus("已讀取 JSON 檔案。");
+          render();
+        } catch (error) {
+          alert("JSON 格式不正確，無法讀取。\n" + error.message);
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function normalizeLoadedPayload(payload) {
+      if (Array.isArray(payload)) {
+        return { tree: payload, exchangeRows: [] };
+      }
+
+      const metadataKey = METADATA_COMPAT_KEYS.find(key => Object.prototype.hasOwnProperty.call(payload, key));
+      if (metadataKey) {
+        return {
+          metadata: payload[metadataKey],
+          tree: payload.tree,
+          exchangeRows: payload.exchangeRows
+        };
+      }
+
+      return payload;
+    }
+
+    function normalizeNodes(nodes) {
+      return nodes.map(node => ({
+        id: typeof node.id === "string" ? node.id : makeId(),
+        name: typeof node.name === "string" ? node.name : "unnamed node",
+        checked: Boolean(node.checked),
+        expanded: node.expanded !== false,
+        children: Array.isArray(node.children) ? normalizeNodes(node.children) : []
+      }));
+    }
+
+    function normalizeExchangeRows(rows) {
+      return rows.map(row => ({
+        id: typeof row.id === "string" ? row.id : makeId(),
+        nodeId: typeof row.nodeId === "string" ? row.nodeId : "",
+        enabled: row.enabled !== false,
+        locked: Boolean(row.locked),
+        path: typeof row.path === "string" ? row.path : "",
+        plcAddress: typeof row.plcAddress === "string" ? row.plcAddress : ""
+      })).filter(row => row.path);
+    }
+
+    function setupSplitters() {
+      document.querySelectorAll(".splitter").forEach(splitter => {
+        splitter.addEventListener("mousedown", event => {
+          event.preventDefault();
+          const leftKey = splitter.dataset.left;
+          const rightKey = splitter.dataset.right;
+          const leftPanel = panelMap[leftKey];
+          const rightPanel = panelMap[rightKey];
+
+          if (state.collapsedPanels[leftKey] || state.collapsedPanels[rightKey]) {
+            return;
+          }
+
+          const startX = event.clientX;
+          const leftStart = leftPanel.getBoundingClientRect().width;
+          const rightStart = rightPanel.getBoundingClientRect().width;
+          const minWidth = 240;
+
+          splitter.classList.add("dragging");
+          document.body.style.cursor = "col-resize";
+          document.body.style.userSelect = "none";
+
+          function onMouseMove(moveEvent) {
+            const delta = moveEvent.clientX - startX;
+            const nextLeft = Math.max(minWidth, leftStart + delta);
+            const nextRight = Math.max(minWidth, rightStart - delta);
+
+            if (nextLeft === minWidth && delta < 0) return;
+            if (nextRight === minWidth && delta > 0) return;
+
+            leftPanel.style.flex = `0 0 ${nextLeft}px`;
+            rightPanel.style.flex = `0 0 ${nextRight}px`;
+          }
+
+          function onMouseUp() {
+            splitter.classList.remove("dragging");
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          }
+
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+        });
+      });
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    dom.addRootBtn.addEventListener("click", addRootNode);
+    dom.expandAllBtn.addEventListener("click", () => applyExpandOrCollapse(true));
+    dom.collapseAllBtn.addEventListener("click", () => applyExpandOrCollapse(false));
+    dom.deleteSelectedNodesBtn.addEventListener("click", deleteSelectedNodes);
+    dom.cancelChildModalBtn.addEventListener("click", closeChildModal);
+    dom.confirmChildModalBtn.addEventListener("click", confirmAddChildNodes);
+    dom.childModal.addEventListener("mousedown", event => {
+      if (event.target === dom.childModal) closeChildModal();
+    });
+    dom.childNameInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") confirmAddChildNodes();
+      if (event.key === "Escape") closeChildModal();
+    });
+    dom.childModalCountInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") confirmAddChildNodes();
+      if (event.key === "Escape") closeChildModal();
+    });
+    dom.searchInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addKeywordFromInput();
+      }
+    });
+    dom.addKeywordBtn.addEventListener("click", addKeywordFromInput);
+    dom.updateSearchBtn.addEventListener("click", () => {
+      updateSearchResults(true);
+      setStatus("已清空 Search Result 勾選狀態並重新搜尋。");
+    });
+    dom.matchAllKeywords.addEventListener("change", () => updateSearchResults(true));
+    dom.showLeafOnly.addEventListener("change", () => updateSearchResults(true));
+    dom.searchSelectAll.addEventListener("change", event => {
+      const matches = getCurrentSearchMatches();
+      if (event.target.checked) {
+        matches.forEach(item => state.searchCheckedIds.add(item.node.id));
+      } else {
+        matches.forEach(item => state.searchCheckedIds.delete(item.node.id));
+      }
+      renderSearchResults();
+    });
+    dom.addSelectedBtn.addEventListener("click", addSelectedToExchange);
+    dom.clearAllBtn.addEventListener("click", clearAllExchangeRows);
+    dom.saveBtn.addEventListener("click", saveJson);
+    dom.loadBtn.addEventListener("click", () => dom.fileInput.click());
+    dom.fileInput.addEventListener("change", event => {
+      loadJsonFile(event.target.files[0]);
+      event.target.value = "";
+    });
+    document.querySelectorAll("[data-toggle-panel]").forEach(button => {
+      button.addEventListener("click", () => togglePanel(button.dataset.togglePanel));
+    });
+
+    setupSplitters();
+    render();
+  </script>
+</body>
+</html>
